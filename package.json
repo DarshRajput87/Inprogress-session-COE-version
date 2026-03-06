@@ -1,0 +1,19 @@
+{
+  "name": "db_script_update",
+  "version": "1.0.0",
+  "main": "Production-open-session.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "dns": "^0.2.2",
+    "dotenv": "^17.3.1",
+    "mongodb": "^7.1.0",
+    "nodemailer": "^8.0.1"
+  }
+}
