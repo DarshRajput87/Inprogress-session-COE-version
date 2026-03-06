@@ -20,7 +20,7 @@ const MONGO_URI =
   "mongodb+srv://IT_INTERN:ITINTERN123@cluster1.0pycd.mongodb.net/chargezoneprod";
 
 const COE_MONGO_URI =
-  "mongodb://localhost:27017/ChargeZoneOperationEngine";
+"mongodb+srv://DarshRajputApp:tst4I6oi6m77xXJS@cluster0.jfptrcd.mongodb.net/ChargeZoneOperationEngine";
 
 const RUN_MODE = process.argv[2] || "MORNING";
 
