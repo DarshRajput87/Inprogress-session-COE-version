@@ -20,7 +20,7 @@ const MONGO_URI =
   "mongodb+srv://IT_INTERN:ITINTERN123@cluster1.0pycd.mongodb.net/chargezoneprod";
 
 const COE_MONGO_URI =
-"mongodb+srv://DarshRajputApp:tst4I6oi6m77xXJS@cluster0.jfptrcd.mongodb.net/ChargeZoneOperationEngine";
+  "mongodb+srv://DarshRajputApp:tst4I6oi6m77xXJS@cluster0.jfptrcd.mongodb.net/ChargeZoneOperationEngine";
 
 const RUN_MODE = process.argv[2] || "MORNING";
 
@@ -144,7 +144,7 @@ async function syncBookingsToDB(mainFile) {
   });
 
   const bulkOps = [];
-  const now = new Date();
+  const now = normalizeToMinute(new Date());
 
   for (const row of rows) {
 
@@ -258,8 +258,8 @@ async function reconcileStatus() {
             $set: {
               status: prodStatus,
               "thread.threadClosed": true,
-              closedAt: new Date(),
-              updatedAt: new Date()
+              closedAt: normalizeToMinute(new Date()),
+              updatedAt: normalizeToMinute(new Date())
             }
           }
         }
@@ -277,7 +277,7 @@ async function reconcileStatus() {
           update: {
             $set: {
               status: prodStatus,
-              updatedAt: new Date()
+              updatedAt: normalizeToMinute(new Date())
             }
           }
         }
@@ -293,11 +293,17 @@ async function reconcileStatus() {
 // =====================================================
 // LIFECYCLE ENGINE
 // =====================================================
+function normalizeToMinute(date) {
+  const d = new Date(date);
+  d.setSeconds(0);
+  d.setMilliseconds(0);
+  return d;
+}
 async function processLifecycleFromDB() {
 
   await reconcileStatus();
 
-  const now = new Date();
+  const now = normalizeToMinute(new Date());
   const todayDate = now.toISOString().split("T")[0];
   const collection = coeDb.collection("ocpiemsp_in_progressbooking");
 
@@ -328,16 +334,21 @@ async function processLifecycleFromDB() {
 
     for (const s of sessions) {
 
-      const n = s.lifecycle?.notificationSentAt;
-      const r1 = s.lifecycle?.reminder1SentAt;
+      const n = s.lifecycle?.notificationSentAt
+        ? normalizeToMinute(s.lifecycle.notificationSentAt)
+        : null;
+
+      const r1 = s.lifecycle?.reminder1SentAt
+        ? normalizeToMinute(s.lifecycle.reminder1SentAt)
+        : null;
 
       if (!n) notify.push(s);
-      else if (!r1 && now - new Date(n) >= 86400000)
+      else if (!r1 && now - n >= 86400000)
         reminder1.push(s);
       else if (
         r1 &&
         !s.lifecycle?.finalReminderSentAt &&
-        now - new Date(r1) >= 86400000
+        now - r1 >= 86400000
       )
         finalReminder.push(s);
     }
@@ -383,15 +394,17 @@ async function processLifecycleFromDB() {
       for (const s of list) {
 
         const field =
-          type === "Notification" ? "lifecycle.notificationSentAt" :
-            type === "Reminder 1" ? "lifecycle.reminder1SentAt" :
-              "lifecycle.finalReminderSentAt";
+          type === "Notification"
+            ? "lifecycle.notificationSentAt"
+            : type === "Reminder 1"
+              ? "lifecycle.reminder1SentAt"
+              : "lifecycle.finalReminderSentAt";
 
         await collection.updateOne(
           { bookingId: s.bookingId },
           {
             $set: {
-              [field]: new Date(),
+              [field]: normalizeToMinute(new Date()),
               "thread.threadId": threadId,
               "thread.threadDate": todayDate
             }
