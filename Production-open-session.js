@@ -357,30 +357,68 @@ async function processLifecycleFromDB() {
 
       if (!list.length) return;
 
-      log("MAIL", `${type} → ${partyId} (${list.length})`);
+      const validSessions = [];
 
-      const rowsHTML = list.map(s => `
-        <tr>
-          <td>${s.bookingId}</td>
-          <td>${s.paymentStatus || "N/A"}</td>
-          <td>${s.status}</td>
-        </tr>
-      `).join("");
+      for (const s of list) {
+
+        const prod = await db.collection("chargerbookings").findOne({
+          _id: s.bookingId
+        });
+
+        if (!prod) continue;
+
+        const prodStatus = String(prod.status || "").toLowerCase();
+
+        // If closed in PROD → close in COE
+        if (prodStatus === "completed" || prodStatus === "cancelled") {
+
+          await collection.updateOne(
+            { bookingId: s.bookingId },
+            {
+              $set: {
+                status: prodStatus,
+                "thread.threadClosed": true,
+                closedAt: normalizeToMinute(new Date()),
+                updatedAt: normalizeToMinute(new Date())
+              }
+            }
+          );
+
+          continue; // do NOT send mail
+        }
+
+        // Only allow active sessions
+        if (prodStatus === "in_progress") {
+          validSessions.push(s);
+        }
+      }
+
+      if (!validSessions.length) return;
+
+      log("MAIL", `${type} → ${partyId} (${validSessions.length})`);
+
+      const rowsHTML = validSessions.map(s => `
+    <tr>
+      <td>${s.bookingId}</td>
+      <td>${s.paymentStatus || "N/A"}</td>
+      <td>${s.status}</td>
+    </tr>
+  `).join("");
 
       const htmlContent = `
-        <div style="font-family:Arial;">
-          <p>Hello Team,</p>
-          <p><b>${type}</b> - Open Sessions</p>
-          <table border="1" cellpadding="6">
-            <tr>
-              <th>Booking ID</th>
-              <th>Payment Status</th>
-              <th>Status</th>
-            </tr>
-            ${rowsHTML}
-          </table>
-        </div>
-      `;
+    <div style="font-family:Arial;">
+      <p>Hello Team,</p>
+      <p><b>${type}</b> - Open Sessions</p>
+      <table border="1" cellpadding="6">
+        <tr>
+          <th>Booking ID</th>
+          <th>Payment Status</th>
+          <th>Status</th>
+        </tr>
+        ${rowsHTML}
+      </table>
+    </div>
+  `;
 
       const info = await transporter.sendMail({
         from: "noreply@chargezone.co.in",
@@ -391,7 +429,7 @@ async function processLifecycleFromDB() {
 
       const threadId = info.messageId;
 
-      for (const s of list) {
+      for (const s of validSessions) {
 
         const field =
           type === "Notification"
