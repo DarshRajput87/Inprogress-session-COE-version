@@ -405,20 +405,76 @@ async function processLifecycleFromDB() {
     </tr>
   `).join("");
 
-      const htmlContent = `
-    <div style="font-family:Arial;">
-      <p>Hello Team,</p>
-      <p><b>${type}</b> - Open Sessions</p>
-      <table border="1" cellpadding="6">
-        <tr>
-          <th>Booking ID</th>
-          <th>Payment Status</th>
-          <th>Status</th>
-        </tr>
-        ${rowsHTML}
-      </table>
-    </div>
+      let messageIntro = "";
+
+      if (type === "Notification") {
+        messageIntro = `
+    <p>Hello,</p>
+    <p>
+      We have identified charging session(s) that are still in <b>in-progress</b> state and for which the
+      corresponding <b>Charge Detail Record (CDR)</b> has not yet been received.
+    </p>
+    <p>
+      Kindly review the sessions listed below and push the corresponding CDRs from your system.
+    </p>
   `;
+      }
+
+      if (type === "Reminder 1") {
+        messageIntro = `
+    <p>Hello,</p>
+    <p>
+      This is a reminder regarding charging session(s) that remain in <b>in-progress</b> state and for which
+      the <b>Charge Detail Record (CDR)</b> is still pending.
+    </p>
+    <p>
+      Kindly review the sessions listed below and push the corresponding CDRs from your system.
+    </p>
+  `;
+      }
+
+      if (type === "Final Reminder") {
+        messageIntro = `
+    <p>Hello,</p>
+    <p>
+      This is a <b>final reminder</b> regarding charging session(s) that remain in <b>in-progress</b> state
+      and for which the <b>Charge Detail Record (CDR)</b> has still not been received.
+    </p>
+    <p>
+      We request you to kindly review the sessions listed below and push the corresponding CDRs
+      from your system at the earliest.
+    </p>
+  `;
+      }
+
+      const htmlContent = `
+<div style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#333;">
+  
+  ${messageIntro}
+
+  <p><b>Session Details:</b></p>
+
+  <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+    <tr style="background:#f2f2f2;">
+      <th>Booking ID</th>
+      <th>Payment Status</th>
+      <th>Status</th>
+    </tr>
+    ${rowsHTML}
+  </table>
+
+  <p style="margin-top:15px;">
+    Submitting the CDR will help ensure that the sessions are accurately reflected in
+    <b>billing and reporting</b>.
+  </p>
+
+  <p>
+    Regards,<br>
+    Chargezone
+  </p>
+
+</div>
+`;
 
       const info = await transporter.sendMail({
         from: "noreply@chargezone.co.in",
